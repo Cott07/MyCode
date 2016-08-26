@@ -1,0 +1,223 @@
+using Newtonsoft.Json.Linq;
+using SharpMap.Styles;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Configuration;
+using System.Data;
+using System.Drawing;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace MapView_2
+{
+    public partial class Form1 : Form
+    {
+        //声明Geometry对象
+        Collection<NetTopologySuite.Geometries.Geometry> geometries = new Collection<NetTopologySuite.Geometries.Geometry>();//12级
+        Collection<NetTopologySuite.Geometries.Geometry> geometries1 = new Collection<NetTopologySuite.Geometries.Geometry>();//13级
+        GeoAPI.Geometries.Coordinate mousedown = new GeoAPI.Geometries.Coordinate();//鼠标单击后的坐标
+        string path = "..//..//Geo//";//地图路径
+        int X = 33, Y = 71;//默认地图行列号
+        SharpMap.Layers.VectorLayer myLayer = new SharpMap.Layers.VectorLayer("my layer");//声明图层
+
+        public Form1()
+        {
+            InitializeComponent();
+
+            //定义分辨率
+            double[] num = new double[18];
+            num[13] = 38.1547;
+            num[14] = 19.1092;
+            MapConfig.Resolutions = num;
+            MapConfig.DefaultLevel = 12;//默认级别
+            MapConfig.Level = MapConfig.DefaultLevel;
+            
+            StreamReader stream = new StreamReader(path+MapConfig.Level+"//"+X+Y+"//1551.json");//打开默认地图流
+            string json = stream.ReadToEnd();//读取为字符串
+            geometries = ReadJSON.readJson(json,geometries);//生成几何
+            
+            myLayer.DataSource = new SharpMap.Data.Providers.GeometryProvider(geometries);//设置数据源
+            mapBox1.Map.Layers.Clear();
+            mapBox1.Map.Layers.Add(myLayer);//添加图层
+            mapBox1.ActiveTool = SharpMap.Forms.MapBox.Tools.Pan;//平移工具
+            mapBox1.Map.Zoom = 0.2;
+            mapBox1.Map.Center = new GeoAPI.Geometries.Coordinate(116.323245, 39.94343);//地图中心
+            mapBox1.Refresh();//刷新
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            OpenFileDialog openFileDialog = new OpenFileDialog();
+            openFileDialog.InitialDirectory = "C:\\Users\\郑伟\\Desktop\\Geo";
+            openFileDialog.Filter = "文本文件|*.*|C#文件|*.cs|所有文件|*.*";
+            openFileDialog.RestoreDirectory = true;
+            openFileDialog.SupportMultiDottedExtensions = true;
+            openFileDialog.FilterIndex = 1;
+            if (openFileDialog.ShowDialog() == DialogResult.OK)
+            {
+                
+                //读取JSON文件
+                StreamReader stream = new StreamReader(openFileDialog.FileName, Encoding.Default);
+                string json = stream.ReadToEnd();
+                geometries = ReadJSON.readJson(json,geometries);
+                stream.Close();
+                
+                //地图绘制
+                SharpMap.Layers.VectorLayer myLayer = new SharpMap.Layers.VectorLayer("my layer");
+                myLayer.DataSource = new SharpMap.Data.Providers.GeometryProvider(geometries); 
+                mapBox1.Map.Layers.Clear();
+                mapBox1.Map.Layers.Add(myLayer);
+                mapBox1.ActiveTool = SharpMap.Forms.MapBox.Tools.Pan;
+                mapBox1.Map.Zoom = 0.2;
+                mapBox1.Map.Center = new GeoAPI.Geometries.Coordinate(116.323245,39.94343);
+                mapBox1.Refresh();
+
+                GeoAPI.Geometries.Envelope envelope = new GeoAPI.Geometries.Envelope(mapBox1.Map.Envelope);
+                MapConfig.OriginX = (envelope.MaxX + envelope.MinX) / 2;
+                MapConfig.OriginY = (envelope.MaxY + envelope.MinY) / 2;
+                textBox1.Text = envelope.ToString() + "  " + MapConfig.OriginX + "   " + MapConfig.OriginY;
+                MapConfig.DefaultLevel = 12;
+            }
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            //从PostGIS数据库读取
+            string ConnStr = "Server=127.0.0.1;Port=5432;UserId=postgres;Password=1234567;Database=postgis;";
+            SharpMap.Layers.VectorLayer vlay1 = new SharpMap.Layers.VectorLayer("layer");
+            SharpMap.Layers.VectorLayer vlay2 = new SharpMap.Layers.VectorLayer("layer");
+            vlay1.DataSource = new SharpMap.Data.Providers.PostGIS(ConnStr, "capitals", "geom");
+            vlay2.DataSource = new SharpMap.Data.Providers.PostGIS(ConnStr, "countries", "geom");
+            
+            //设置地图样式
+            VectorStyle style1 = new VectorStyle();
+            style1.Fill = new SolidBrush(Color.Green/*Color.FromArgb(204, 89, 68)*/);
+            style1.EnableOutline = true;
+
+            VectorStyle style2 = new VectorStyle();
+            style2.Fill = new SolidBrush(Color.FromArgb(253, 174, 97));
+            style2.EnableOutline = true;
+            style2.Outline = new Pen(Brushes.Black, 1.2f);
+
+            VectorStyle style3 = new VectorStyle();
+            style3.Fill = new SolidBrush(Color.FromArgb(255, 255, 192));
+            style3.EnableOutline = true;
+            style3.Outline = new Pen(Brushes.Black, 1.2f);
+
+            VectorStyle style4 = new VectorStyle();
+            style4.Fill = new SolidBrush(Color.FromArgb(166, 217, 106));
+            style4.EnableOutline = true;
+            style4.Outline = new Pen(Brushes.Black, 1.2f);
+
+            Dictionary<string, SharpMap.Styles.IStyle> styles = new Dictionary<string, IStyle>();
+            styles.Add("1", style1);
+            styles.Add("2", style2);
+            styles.Add("3", style3);
+            styles.Add("4", style4);
+
+            vlay2.Theme = new SharpMap.Rendering.Thematics.UniqueValuesTheme<string>("gid",styles, style4);
+
+            mapBox1.Map.Layers.Add(vlay1);
+            mapBox1.Map.Layers.Add(vlay2);
+            style1.Outline = new Pen(Brushes.Black, 1.2f);
+            mapBox1.ActiveTool = SharpMap.Forms.MapBox.Tools.Pan;
+            mapBox1.Map.ZoomToExtents();
+            mapBox1.Refresh();
+        }
+
+        private void mapBox1_MouseClick(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Right)
+            {
+                
+            }
+        }
+
+        private void mapBox1_MouseDown(GeoAPI.Geometries.Coordinate worldPos, MouseEventArgs imagePos)//鼠标按下事件
+        {
+            mousedown = worldPos;//获取鼠标按下坐标
+        }
+
+        private void mapBox1_MouseUp(GeoAPI.Geometries.Coordinate worldPos, MouseEventArgs imagePos)//鼠标平移事件
+        {
+            MapConfig.X = mousedown.X - worldPos.X;//X方向偏移量
+            MapConfig.Y = mousedown.Y - worldPos.Y;//Y方向偏移量
+            textBox1.Text = MapConfig.X.ToString() + "    " + MapConfig.Y.ToString();
+            if (MapConfig.X > 0 || MapConfig.X == 0)//X偏移量为正，向右偏移
+            {
+                
+                Y++;//列号加1
+                
+                if (MapConfig.Level == 12)
+                {
+                    if (File.Exists(path + MapConfig.Level + "//" + X + Y + "//1551.json"))
+                    {
+                        
+                        //添加相应地图
+                        StreamReader sr = new StreamReader(path + MapConfig.Level + "//" + X + Y + "//1551.json");
+                        string json = sr.ReadToEnd();
+                        geometries = ReadJSON.readJson(json, geometries);
+                        myLayer.DataSource = new SharpMap.Data.Providers.GeometryProvider(geometries);
+                        mapBox1.Map.Zoom = 0.2;
+                        mapBox1.Refresh();
+                    }
+                    else mapBox1.Refresh();
+                }
+                else if (MapConfig.Level == 13)
+                {
+                    if (File.Exists(path + MapConfig.Level + "//" + X + Y + "//3102.json"))
+                    {
+                        //添加相应地图
+                        StreamReader sr = new StreamReader(path + MapConfig.Level + "//" + X + Y + "//3102.json");
+                        string json = sr.ReadToEnd();
+                        geometries1 = ReadJSON.readJson(json, geometries1);
+                        myLayer.DataSource = new SharpMap.Data.Providers.GeometryProvider(geometries1);
+                        mapBox1.Map.Zoom = 0.1;
+                        mapBox1.Refresh();
+                    }
+                    else mapBox1.Refresh();
+                }
+                
+            }
+            
+            else mapBox1.Refresh();
+        }
+
+        private void numericUpDown1_ValueChanged(object sender, EventArgs e)//级别更改事件
+        {
+            MapConfig.Level = int.Parse(numericUpDown1.Value.ToString());
+            string json = null;
+            if (MapConfig.Level == 12)
+            {
+                X = 33;
+                Y = 71;
+                StreamReader sr = new StreamReader(path + MapConfig.Level + "//" + X + Y + "//1551.json");
+                json = sr.ReadToEnd();
+                geometries.Clear();
+                geometries = ReadJSON.readJson(json, geometries);
+                myLayer.DataSource = new SharpMap.Data.Providers.GeometryProvider(geometries);
+                mapBox1.Map.Zoom = 0.2;
+                mapBox1.Refresh();
+            }
+            else if (MapConfig.Level == 13)
+            {
+                X = 67;
+                Y = 43;
+                geometries1.Clear();
+                StreamReader sr = new StreamReader(path + MapConfig.Level + "//" + X + Y + "//3102.json");
+                json = sr.ReadToEnd();
+                geometries1 = ReadJSON.readJson(json, geometries1);
+                myLayer.DataSource = new SharpMap.Data.Providers.GeometryProvider(geometries1);
+                mapBox1.Map.Zoom = 0.1;
+                mapBox1.Refresh();
+            }
+            
+        }
+
+    }
+}
