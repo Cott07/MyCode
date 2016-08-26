@@ -1,0 +1,60 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace MapView_2
+{
+    public class MapConfig
+    {
+        public static double X
+        {
+            get;
+            set;
+        }
+
+        public static double Y
+        {
+            set;
+            get;
+        }
+
+        //原点X
+        public static double OriginX
+        {
+            set;
+            get;
+        }
+        //原点Y
+        public static double OriginY
+        {
+            set;
+            get;
+        }
+        //各级分辨率
+        public static double[] Resolutions
+        {
+            get;
+            set;
+        }
+        //地图范围
+        public static double[] Extend
+        {
+            get;
+            set;
+        }
+        //默认级别
+        public static int DefaultLevel
+        {
+            get;
+            set;
+        }
+
+        public static int Level
+        {
+            set;
+            get;
+        }
+    }
+}
