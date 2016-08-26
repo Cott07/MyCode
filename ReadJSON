@@ -1,0 +1,118 @@
+using Newtonsoft.Json.Linq;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace MapView_2
+{
+    class ReadJSON
+    {
+        public static Collection<NetTopologySuite.Geometries.Geometry> readJson(string json, Collection<NetTopologySuite.Geometries.Geometry> geometries)
+        {
+            var jobj = JObject.Parse(json);
+            switch (jobj["type"].ToString())
+            {
+                case "GeometryCollection":
+                    
+                    string geocollection_type = jobj["geometries"][0]["type"].ToString();
+                    switch (geocollection_type)
+                    {
+                        case "Point":
+                            for (int i = 0; i < jobj["geometries"].Count(); i++)
+                            {
+                                geometries.Add(new NetTopologySuite.Geometries.Point(
+                                    double.Parse(jobj["geometries"][i]["coordinates"][0].ToString()),
+                                    double.Parse(jobj["geometries"][i]["coordinates"][1].ToString())));
+                            }
+                            break;
+
+                        case "LineString":
+                            GeoAPI.Geometries.Coordinate[] points = new GeoAPI.Geometries.Coordinate[jobj["geometries"][0]["coordinates"].Count()];
+                            for (int i = 0; i < jobj["geometries"][0]["coordinates"].Count(); i++)
+                            {
+                                points[i] = new GeoAPI.Geometries.Coordinate(
+                                    double.Parse(jobj["geometries"][0]["coordinates"][i][0].ToString()),
+                                    double.Parse(jobj["geometries"][0]["coordinates"][i][1].ToString()));
+                            }
+                            NetTopologySuite.Geometries.LineString linestring = new NetTopologySuite.Geometries.LineString(points);
+                            geometries.Add(linestring);
+                            break;
+
+                        case "Polygon":
+                            GeoAPI.Geometries.Coordinate[] points1 = new GeoAPI.Geometries.Coordinate[jobj["geometries"][0]["coordinates"][0].Count()];
+                            for (int i = 0; i < jobj["geometries"][0]["coordinates"][0].Count(); i++)
+                            {
+                                points1[i] = new GeoAPI.Geometries.Coordinate(
+                                    double.Parse(jobj["geometries"][0]["coordinates"][0][i][0].ToString()),
+                                    double.Parse(jobj["geometries"][0]["coordinates"][0][i][1].ToString()));
+                            }
+                            NetTopologySuite.Geometries.LinearRing linering = new NetTopologySuite.Geometries.LinearRing(points1);
+                            NetTopologySuite.Geometries.Polygon polygon = new NetTopologySuite.Geometries.Polygon(linering);
+                            geometries.Add(polygon);
+                            break;
+
+                        case "MultiPoint":
+                            for (int i = 0; i < jobj["geometries"].Count(); i++)
+                            {
+                                for (int j = 0; j < jobj["geometries"][i]["coordinates"].Count(); j++)
+                                {
+                                    geometries.Add(new NetTopologySuite.Geometries.Point(
+                                        double.Parse(jobj["geometries"][i]["coordinates"][j][0].ToString()),
+                                        double.Parse(jobj["geometries"][i]["coordinates"][j][1].ToString())));
+                                }
+                            }
+                            break;
+
+                        default: break;
+                    }
+                    break;
+
+                case "FeatureCollection":
+
+                    for (int i = 0; i < jobj["features"].Count(); i++)
+                    {
+                        switch (jobj["features"][i]["geometry"]["type"].ToString())
+                        {
+                            case "Point":
+                                geometries.Add(new NetTopologySuite.Geometries.Point(
+                                    double.Parse(jobj["features"][i]["geometry"]["coordinates"][0].ToString()),
+                                    double.Parse(jobj["features"][i]["geometry"]["coordinates"][1].ToString())));
+                                break;
+
+                            case "LineString":
+                                GeoAPI.Geometries.Coordinate[] lpoints = new GeoAPI.Geometries.Coordinate[jobj["features"][i]["geometry"]["coordinates"].Count()];
+                                for (int j = 0; j < jobj["features"][i]["geometry"]["coordinates"].Count(); j++)
+                                {
+                                    lpoints[j] = new GeoAPI.Geometries.Coordinate(
+                                        double.Parse(jobj["features"][i]["geometry"]["coordinates"][j][0].ToString()),
+                                        double.Parse(jobj["features"][i]["geometry"]["coordinates"][j][1].ToString()));
+                                }
+                                NetTopologySuite.Geometries.LineString linestring = new NetTopologySuite.Geometries.LineString(lpoints);
+                                geometries.Add(linestring);
+                                break;
+
+                            case "Polygon":
+                                GeoAPI.Geometries.Coordinate[] ppoints = new GeoAPI.Geometries.Coordinate[jobj["features"][i]["geometry"]["coordinates"][0].Count()];
+                                for (int j = 0; j < jobj["features"][i]["geometry"]["coordinates"][0].Count(); j++)
+                                {
+                                    ppoints[j] = new GeoAPI.Geometries.Coordinate(
+                                        double.Parse(jobj["features"][i]["geometry"]["coordinates"][0][j][0].ToString()),
+                                        double.Parse(jobj["features"][i]["geometry"]["coordinates"][0][j][1].ToString()));
+                                }
+                                NetTopologySuite.Geometries.LinearRing linearring = new NetTopologySuite.Geometries.LinearRing(ppoints);
+                                NetTopologySuite.Geometries.Polygon polygon = new NetTopologySuite.Geometries.Polygon(linearring);
+                                geometries.Add(polygon);
+                                break;
+                        }
+                    }
+                    break;
+
+                default: break;
+            }
+            return geometries;
+        }
+    }
+}
